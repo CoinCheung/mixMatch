@@ -26,7 +26,7 @@ n_imgs_per_epoch = 64*1024
 n_guesses = 2
 temperature = 0.5
 mixup_alpha = 0.75
-lam_u = 100
+lam_u = 75
 ema_alpha = 0.999
 weight_decay = 0.02
 
