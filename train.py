@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+#  from model_old import WideResnet
 from model import WideResnet
 from cifar import get_train_loader, get_val_loader, OneHot
 from label_guessor import LabelGuessor

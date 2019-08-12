@@ -13,12 +13,9 @@ from torch.nn import BatchNorm2d
 
 
 class BasicBlockPreAct(nn.Module):
-    def __init__(
-            self, in_chan, out_chan, drop_rate=0, stride=1, pre_res_act=False
-        ):
+    def __init__(self, in_chan, out_chan, stride=1):
         super(BasicBlockPreAct, self).__init__()
         self.bn1 = BatchNorm2d(in_chan, momentum=0.001)
-        self.relu1 = nn.LeakyReLU(inplace=True, negative_slope=0.1)
         self.conv1 = nn.Conv2d(
             in_chan,
             out_chan,
@@ -28,8 +25,7 @@ class BasicBlockPreAct(nn.Module):
             bias=False
         )
         self.bn2 = BatchNorm2d(out_chan, momentum=0.001)
-        self.relu2 = nn.LeakyReLU(inplace=True, negative_slope=0.1)
-        self.dropout = nn.Dropout(drop_rate)
+        #  self.dropout = nn.Dropout(0.1)
         self.conv2 = nn.Conv2d(
             out_chan,
             out_chan,
@@ -38,24 +34,25 @@ class BasicBlockPreAct(nn.Module):
             padding=1,
             bias=False
         )
+        self.relu = nn.ReLU(inplace=True)
+        #  self.relu = nn.LeakyReLU(inplace=True, negative_slope=0.1)
         self.downsample = None
         if in_chan != out_chan or stride != 1:
             self.downsample = nn.Conv2d(
                 in_chan, out_chan, kernel_size=1, stride=stride, bias=False
             )
-        self.pre_res_act = pre_res_act
         self.init_weight()
 
     def forward(self, x):
         bn1 = self.bn1(x)
-        act1 = self.relu1(bn1)
+        act1 = self.relu(bn1)
         residual = self.conv1(act1)
         residual = self.bn2(residual)
-        residual = self.relu2(residual)
-        residual = self.dropout(residual)
+        residual = self.relu(residual)
+        #  residual = self.dropout(residual)
         residual = self.conv2(residual)
 
-        shortcut = act1 if self.pre_res_act else x
+        shortcut = x
         if self.downsample is not None:
             shortcut = self.downsample(shortcut)
 
@@ -66,7 +63,8 @@ class BasicBlockPreAct(nn.Module):
         for _, md in self.named_modules():
             if isinstance(md, (nn.Linear, nn.Conv2d)):
                 nn.init.kaiming_normal_(
-                    md.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
+                    md.weight, a=0, mode='fan_in', nonlinearity='leaky_relu'
+                )
                 if not md.bias is None: nn.init.constant_(md.bias, 0)
 
 
@@ -74,7 +72,8 @@ class BasicBlockPreAct(nn.Module):
 class WideResnetBackbone(nn.Module):
     def __init__(self, k=1, n=28):
         super(WideResnetBackbone, self).__init__()
-        self.k, self.n = k, n
+        self.k = k
+        self.n = n
         assert (self.n - 4) % 6 == 0
         n_blocks = (self.n - 4) // 6
         n_layers = [16,] + [self.k*16*(2**i) for i in range(3)]
@@ -91,54 +90,29 @@ class WideResnetBackbone(nn.Module):
             n_layers[0],
             n_layers[1],
             bnum=n_blocks,
-            stride=1,
-            drop_rate=0,
-            pre_res_act=True,
+            stride=1
         )
         self.layer2 = self.create_layer(
             n_layers[1],
             n_layers[2],
             bnum=n_blocks,
-            stride=2,
-            drop_rate=0,
-            pre_res_act=False,
+            stride=2
         )
         self.layer3 = self.create_layer(
             n_layers[2],
             n_layers[3],
             bnum=n_blocks,
-            stride=2,
-            drop_rate=0,
-            pre_res_act=False,
+            stride=2
         )
         self.bn_last = BatchNorm2d(n_layers[3], momentum=0.001)
-        self.relu_last = nn.LeakyReLU(inplace=True, negative_slope=0.1)
+        self.relu_last = nn.ReLU(inplace=True)
+        #  self.relu_last = nn.LeakyReLU(inplace=True, negative_slope=0.1)
         self.init_weight()
 
-    def create_layer(
-            self,
-            in_chan,
-            out_chan,
-            bnum,
-            stride=1,
-            drop_rate=0,
-            pre_res_act=False,
-        ):
-        layers = [
-            BasicBlockPreAct(
-                in_chan,
-                out_chan,
-                drop_rate=drop_rate,
-                stride=stride,
-                pre_res_act=pre_res_act),]
+    def create_layer(self, in_chan, out_chan, bnum, stride=1):
+        layers = [BasicBlockPreAct(in_chan, out_chan, stride=stride)]
         for _ in range(bnum-1):
-            layers.append(
-                BasicBlockPreAct(
-                    out_chan,
-                    out_chan,
-                    drop_rate=drop_rate,
-                    stride=1,
-                    pre_res_act=False,))
+            layers.append(BasicBlockPreAct(out_chan, out_chan, stride=1))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -167,7 +141,8 @@ class WideResnet(nn.Module):
     '''
     def __init__(self, n_classes, k=1, n=28):
         super(WideResnet, self).__init__()
-        self.n_layers, self.k = n, k
+        self.n_layers = n
+        self.k = k
         self.backbone = WideResnetBackbone(k=k, n=n)
         self.classifier = nn.Linear(64*self.k, n_classes)
         self.bn = nn.BatchNorm1d(n_classes, momentum=0.001)
@@ -176,7 +151,7 @@ class WideResnet(nn.Module):
         feat = self.backbone(x)[-1]
         feat = torch.mean(feat, dim=(2, 3))
         feat = self.classifier(feat)
-        #  feat = self.bn(feat)
+        feat = self.bn(feat)
         return feat
 
     def init_weight(self):
