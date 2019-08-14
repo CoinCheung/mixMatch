@@ -29,7 +29,7 @@ class BasicBlockPreAct(nn.Module):
         )
         self.bn2 = BatchNorm2d(out_chan, momentum=0.001)
         self.relu2 = nn.LeakyReLU(inplace=True, negative_slope=0.1)
-        self.dropout = nn.Dropout(drop_rate)
+        self.dropout = nn.Dropout(drop_rate) if not drop_rate == 0 else None
         self.conv2 = nn.Conv2d(
             out_chan,
             out_chan,
@@ -52,7 +52,8 @@ class BasicBlockPreAct(nn.Module):
         residual = self.conv1(act1)
         residual = self.bn2(residual)
         residual = self.relu2(residual)
-        residual = self.dropout(residual)
+        if not self.dropout is None:
+            residual = self.dropout(residual)
         residual = self.conv2(residual)
 
         shortcut = act1 if self.pre_res_act else x

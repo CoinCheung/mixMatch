@@ -1,16 +1,19 @@
 import torch
+import copy
 
 class LabelGuessor(object):
-    def __init__(self, T):
+    def __init__(self, T, model):
         self.T = T
+        self.guessor = copy.deepcopy(model)
 
     def __call__(self, model, ims):
-        model.train()
+        self.guessor.load_state_dict(model.state_dict())
+        self.guessor.train()
         all_probs = []
         with torch.no_grad():
             for im in ims:
                 im = im.cuda()
-                logits = model(im)
+                logits = self.guessor(im)
                 probs = torch.softmax(logits, dim=1)
                 all_probs.append(probs)
             qb = sum(all_probs)/len(all_probs)

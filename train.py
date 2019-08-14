@@ -165,7 +165,7 @@ def train():
     dltrain_x, dltrain_u = get_train_loader(
         batchsize, L=250, K=n_guesses, num_workers=n_workers
     )
-    lb_guessor = LabelGuessor(T=temperature)
+    lb_guessor = LabelGuessor(T=temperature, model)
     mixuper = MixUp(mixup_alpha)
 
     ema = EMA(model, ema_alpha, weight_decay, lr)
