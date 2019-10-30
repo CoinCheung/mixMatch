@@ -82,22 +82,20 @@ class Cifar10(Dataset):
         self.n_guesses = n_guesses
         assert len(self.data) == len(self.labels)
         assert self.n_guesses >= 1
+        #  mean, std = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+        mean, std = (0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616)
         if is_train:
             self.trans = T.Compose([
                 T.Resize((32, 32)),
                 T.PadandRandomCrop(border=4, cropsize=(32, 32)),
                 T.RandomHorizontalFlip(p=0.5),
-                T.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
-                ),
+                T.Normalize(mean, std),
                 T.ToTensor(),
             ])
         else:
             self.trans = T.Compose([
                 T.Resize((32, 32)),
-                T.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
-                ),
+                T.Normalize(mean, std),
                 T.ToTensor(),
             ])
 

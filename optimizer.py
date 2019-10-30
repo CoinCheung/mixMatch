@@ -19,8 +19,9 @@ class EMA(object):
         for name in self.param_keys:
             s, m = self.state_dict[name], md[name]
             #  self.state_dict[name] = self.decay*(self.alpha*s + (1-self.alpha)*m)
+            #  md[name] *= self.decay
+            md[name] = m * self.decay
             self.state_dict[name] = self.alpha*s + (1-self.alpha)*m
-            md[name] = self.decay * m
         self.model.load_state_dict(md)
 
     def update_buffer(self):
@@ -49,13 +50,49 @@ if __name__ == '__main__':
     #  out = model(inten)
     #  print(sd)
     #  print(model.state_dict())
+    import torch.nn as nn
+    class Model(nn.Module):
+        def __init__(self):
+            super(Model, self).__init__()
+            self.conv = nn.Conv2d(3, 8, 3, 1, 1)
+            self.bn = nn.BatchNorm2d(8)
+            self.act = nn.ReLU()
+            self.linear = nn.Linear(8, 5)
+        def forward(self, x):
+            feat = self.act(self.bn(self.conv(x)))
+            feat = torch.mean(feat, dim=(2, 3))
+            logits = self.linear(feat)
+            return logits
 
     print('=====')
-    model = torch.nn.BatchNorm1d(5)
+    import torchvision
+    model = Model()
+    criteria = torch.nn.CrossEntropyLoss()
     ema = EMA(model, 0.9, 0.02, 0.002)
-    inten = torch.randn(10, 5)
+    optim = torch.optim.SGD(model.parameters(), lr=1e-1, momentum=0.9)
+    inten = torch.randn(8, 3, 224, 224)
+    lbs = torch.randint(0, 5, (8, ))
     out = model(inten)
+    loss = criteria(out, lbs)
+    optim.zero_grad()
+    loss.backward()
+    md = model
+    print(md.state_dict()['bn.weight'])
+    print('=======')
+    print(ema.state_dict['bn.weight'])
+    print('=======')
+    optim.step()
+    print(md.state_dict()['bn.weight'])
+    print('=======')
+    print(ema.state_dict['bn.weight'])
+    print('=======')
     ema.update_params()
-    print(model.state_dict())
+    print(md.state_dict()['bn.weight'])
+    print('=======')
+    print(ema.state_dict['bn.weight'])
+    print('=======')
     ema.update_buffer()
-    print(model.state_dict())
+    print(md.state_dict()['bn.weight'])
+    print('=======')
+    print(ema.state_dict['bn.weight'])
+    print('=======')

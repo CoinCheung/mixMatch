@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+#  from model_new import WideResnet
 from model import WideResnet
 from cifar import get_train_loader, get_val_loader, OneHot
 from label_guessor import LabelGuessor
@@ -80,7 +81,8 @@ def train_one_epoch(
         with torch.no_grad():
             ims_x, lbs_x = ims_x[0].cuda(), one_hot(lbs_x).cuda()
             ims_u = [im.cuda() for im in ims_u]
-            lbs_u = lb_guessor(model, ims_u).cuda()
+            #  lbs_u = lb_guessor(model, ims_u).cuda()
+            lbs_u = lb_guessor(ema, ims_u).cuda()
             ims = torch.cat([ims_x]+ims_u, dim=0)
             lbs = torch.cat([lbs_x]+[lbs_u for _ in range(n_guesses)], dim=0)
             ims, lbs = mixuper(ims, lbs)
@@ -122,9 +124,10 @@ def train_one_epoch(
                 'loss_avg: {:.4f}',
                 'loss_u: {:.4f}',
                 'loss_x: {:.4f}',
+                'lam_u: {:.4f}',
                 'time: {:.2f}',
             ]).format(
-                it+1, loss_avg, loss_u, loss_x, t
+                it+1, loss_avg, loss_u, loss_x, lam_u, t
             )
             loss_avg, loss_x_avg, loss_u_avg = [], [], []
             st = ed
@@ -164,7 +167,7 @@ def train():
     dltrain_x, dltrain_u = get_train_loader(
         batchsize, L=250, K=n_guesses, num_workers=n_workers
     )
-    lb_guessor = LabelGuessor(T=temperature)
+    lb_guessor = LabelGuessor(model, T=temperature)
     mixuper = MixUp(mixup_alpha)
 
     ema = EMA(model, ema_alpha, weight_decay, lr)
@@ -187,6 +190,7 @@ def train():
         lambda_u=0,
         lambda_u_once=lam_u_once,
     )
+    best_acc = -1
     print('start to train')
     for e in range(n_epoches):
         model.train()
@@ -194,8 +198,14 @@ def train():
         train_args['lambda_u'] = e * lam_u_epoch
         train_one_epoch(**train_args)
         torch.cuda.empty_cache()
+
         acc = evaluate(ema)
-        print('acc of epoch {} is: {}'.format(e, acc))
+        best_acc = acc if best_acc < acc else best_acc
+        log_msg = [
+            'epoch: {}'.format(e),
+            'acc: {:.4f}'.format(acc),
+            'best_acc: {:.4f}'.format(best_acc)]
+        print(', '.join(log_msg))
 
 
 if __name__ == '__main__':
