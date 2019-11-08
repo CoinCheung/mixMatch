@@ -1,4 +1,3 @@
-import copy
 import torch
 
 
@@ -7,7 +6,11 @@ class EMA(object):
         self.model = model
         self.alpha = alpha
         self.decay = (1 - wd * lr)
-        self.state_dict = copy.deepcopy(model.state_dict())
+        #  self.state_dict = copy.deepcopy(model.state_dict())
+        self.state_dict = {
+            k: v.clone().detach()
+            for k, v in model.state_dict().items()
+        }
         self.buffer_keys, self.param_keys = [], []
         self.param_keys = [k for k, _ in self.model.named_parameters()]
         self.buffer_keys = [

@@ -1,5 +1,5 @@
-import copy
 import torch
+import copy
 
 class LabelGuessor(object):
     def __init__(self, model, T):
@@ -22,7 +22,10 @@ class LabelGuessor(object):
     #      return lbs.detach()
 
     def __call__(self, ema, ims):
-        self.guessor.load_state_dict(copy.deepcopy(ema.state_dict))
+        #  self.guessor.load_state_dict(copy.deepcopy(ema.state_dict))
+        self.guessor.load_state_dict({
+            for k, v.clone().detach() in ema.state_dict
+        })
         self.guessor.train()
         all_probs = []
         with torch.no_grad():
