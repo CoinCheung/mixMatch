@@ -149,7 +149,7 @@ class WideResnet(nn.Module):
         feat = self.backbone(x)[-1]
         feat = torch.mean(feat, dim=(2, 3))
         feat = self.classifier(feat)
-        #  feat = self.bn(feat)
+        feat = self.bn(feat)
         return feat
 
     def init_weight(self):

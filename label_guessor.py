@@ -22,9 +22,9 @@ class LabelGuessor(object):
     #      return lbs.detach()
 
     def __call__(self, ema, ims):
-        #  self.guessor.load_state_dict(copy.deepcopy(ema.state_dict))
         self.guessor.load_state_dict({
-            for k, v.clone().detach() in ema.state_dict
+            k: v.clone().detach()
+            for k, v in ema.state_dict.items()
         })
         self.guessor.train()
         all_probs = []
