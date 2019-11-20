@@ -13,4 +13,4 @@ class MixUp(object):
         indices = torch.randperm(bs)
         ims = lam*ims + (1.-lam)*ims[indices]
         lbs = lam*lbs + (1.-lam)*lbs[indices]
-        return ims, lbs
+        return ims.detach(), lbs.detach()

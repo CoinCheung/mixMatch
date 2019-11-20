@@ -40,18 +40,6 @@ def load_data_train(L=250, dspth='./dataset'):
             for i in inds_u
         ]
         label_u += [labels[i] for i in inds_u]
-#
-#     indices = np.random.choice(range(n_data), L, replace=False).tolist()
-#     data_x = [
-#         el.reshape(3, 32, 32).transpose(1, 2, 0)
-#         for i, el in enumerate(data) if i in indices
-#     ]
-#     label_x = [el for i, el in enumerate(labels) if i in indices]
-#     data_u = [
-#         el.reshape(3, 32, 32).transpose(1, 2, 0)
-#         for i, el in enumerate(data) if not i in indices
-#     ]
-#     label_u = [el for i, el in enumerate(labels) if not i in indices]
     return data_x, label_x, data_u, label_u
 
 

@@ -6,13 +6,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-#  from model_new import WideResnet
 from model import WideResnet
 from cifar import get_train_loader, get_val_loader, OneHot
 from label_guessor import LabelGuessor
 from mixup import MixUp
 from loss import CrossEntropyLoss
-from optimizer import EMA
+from ema import EMA
 
 
 ## some hyper-parameters are borrowed from the official repository
@@ -55,6 +54,7 @@ def train_one_epoch(
         criteria_u,
         optim,
         ema,
+        wd,
         dltrain_x,
         dltrain_u,
         lb_guessor,
@@ -81,13 +81,10 @@ def train_one_epoch(
         with torch.no_grad():
             ims_x, lbs_x = ims_x[0].cuda(), one_hot(lbs_x).cuda()
             ims_u = [im.cuda() for im in ims_u]
-            #  lbs_u = lb_guessor(model, ims_u).cuda()
             lbs_u = lb_guessor(ema, ims_u).cuda()
             ims = torch.cat([ims_x]+ims_u, dim=0)
             lbs = torch.cat([lbs_x]+[lbs_u for _ in range(n_guesses)], dim=0)
             ims, lbs = mixuper(ims, lbs)
-            #  ims = torch.split(ims, batchsize)
-            #  lbs = torch.split(lbs, batchsize)
 
         optim.zero_grad()
         logits = model(ims)
@@ -96,17 +93,13 @@ def train_one_epoch(
         logits_u = logits[batchsize:]
         preds_u = torch.softmax(logits_u, dim=1)
         lbs_u = lbs[batchsize:]
-        #  logits = [model(im) for im in ims]
-        #  logits_x, lbs_x = logits[0], lbs[0]
-        #  logits_u = torch.cat([logits[i] for i in range(1, len(logits))], dim=0)
-        #  preds_u = torch.softmax(logits_u, dim=1)
-        #  lbs_u = torch.cat([lbs[i] for i in range(1, len(lbs))], dim=0)
         loss_x = criteria_x(logits_x, lbs_x)
         loss_u = criteria_u(preds_u, lbs_u)
         lam_u = lambda_u + lambda_u_once * it
         loss = loss_x + lam_u * loss_u
         loss.backward()
         optim.step()
+        do_weight_decay(model, wd)
         ema.update_params()
 
         loss_avg.append(loss.item())
@@ -160,6 +153,11 @@ def evaluate(ema):
     return acc
 
 
+@torch.no_grad()
+def do_weight_decay(model, decay):
+    for param in model.parameters():
+        param.copy_(param * decay)
+
 
 def train():
     model, criteria_x, criteria_u = set_model()
@@ -170,7 +168,7 @@ def train():
     lb_guessor = LabelGuessor(model, T=temperature)
     mixuper = MixUp(mixup_alpha)
 
-    ema = EMA(model, ema_alpha, weight_decay, lr)
+    ema = EMA(model, ema_alpha)
     optim = torch.optim.Adam(model.parameters(), lr=lr)
 
     n_iters_per_epoch = n_imgs_per_epoch // batchsize
@@ -183,6 +181,7 @@ def train():
         criteria_u=criteria_u,
         optim=optim,
         ema=ema,
+        wd = 1 - weight_decay * lr,
         dltrain_x=dltrain_x,
         dltrain_u=dltrain_u,
         lb_guessor=lb_guessor,

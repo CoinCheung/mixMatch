@@ -66,8 +66,6 @@ class BasicBlockPreAct(nn.Module):
     def init_weight(self):
         for _, md in self.named_modules():
             if isinstance(md, nn.Conv2d):
-                #  n = md.kernel_size[0] * md.kernel_size[0] * md.out_channels
-                #  nn.init.normal_(md.weight, 0, (2./n)**0.5)
                 nn.init.kaiming_normal_(
                     md.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
                 if not md.bias is None: nn.init.constant_(md.bias, 0)
@@ -174,7 +172,7 @@ class WideResnet(nn.Module):
         super(WideResnet, self).__init__()
         self.n_layers, self.k = n, k
         self.backbone = WideResnetBackbone(k=k, n=n)
-        self.classifier = nn.Linear(64*self.k, n_classes, bias=True)
+        self.classifier = nn.Linear(64 * self.k, n_classes, bias=True)
         self.bn = nn.BatchNorm1d(n_classes, momentum=0.001)
 
     def forward(self, x):
@@ -185,17 +183,9 @@ class WideResnet(nn.Module):
         return feat
 
     def init_weight(self):
-        #  nn.init.kaiming_normal_(
-        #      classifier.weight, a=0, mode='fan_in', nonlinearity='leaky_relu'
-        #  )
         nn.init.xavier_normal_(self.classifier.weight)
         if not self.classifier.bias is None:
             nn.init.constant_(self.classifier.bias, 0)
-
-        #  for _, md in self.named_modules():
-        #      if isinstance(md, BatchNorm2d):
-        #          #  md.momentum = 1/(256**2)
-        #          md.momentum = 0.1
 
 
 

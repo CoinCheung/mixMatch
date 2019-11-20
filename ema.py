@@ -2,35 +2,29 @@ import torch
 
 
 class EMA(object):
-    def __init__(self, model, alpha, wd, lr):
+    def __init__(self, model, alpha):
         self.model = model
         self.alpha = alpha
-        self.decay = (1 - wd * lr)
-        #  self.state_dict = copy.deepcopy(model.state_dict())
         self.state_dict = {
             k: v.clone().detach()
+            #  k: torch.zeros_like(v).detach()
             for k, v in model.state_dict().items()
         }
-        self.buffer_keys, self.param_keys = [], []
         self.param_keys = [k for k, _ in self.model.named_parameters()]
-        self.buffer_keys = [
-            k for k in self.state_dict.keys() if not k in self.param_keys
-        ]
+        self.buffer_keys = [k for k, _ in self.model.named_buffers()]
 
     def update_params(self):
-        md = self.model.state_dict()
+        state = self.model.state_dict()
         for name in self.param_keys:
-            s, m = self.state_dict[name], md[name]
-            #  self.state_dict[name] = self.decay*(self.alpha*s + (1-self.alpha)*m)
-            #  md[name] *= self.decay
-            md[name] = m * self.decay
-            self.state_dict[name] = self.alpha*s + (1-self.alpha)*m
-        self.model.load_state_dict(md)
+            self.state_dict[name].copy_(
+                self.alpha * self.state_dict[name]
+                + (1 - self.alpha) * state[name]
+            )
 
     def update_buffer(self):
-        md = self.model.state_dict()
+        state = self.model.state_dict()
         for name in self.buffer_keys:
-            self.state_dict[name] = md[name]
+            self.state_dict[name].copy_(state[name])
 
     def save_model(self, pth):
         torch.save(self.state_dict, pth)
@@ -38,21 +32,6 @@ class EMA(object):
 
 
 if __name__ == '__main__':
-    #  print(sd)
-    #  print(model.state_dict())
-    #  print('=====')
-    #  for name, _ in model.named_parameters():
-    #      print(name)
-    #  print('=====')
-    #  for name, _ in model.state_dict().items():
-    #      print(name)
-    #  print('=====')
-    #  print(sd)
-    #  model.load_state_dict(sd)
-    #  print(model.state_dict())
-    #  out = model(inten)
-    #  print(sd)
-    #  print(model.state_dict())
     import torch.nn as nn
     class Model(nn.Module):
         def __init__(self):
