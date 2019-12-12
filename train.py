@@ -81,7 +81,7 @@ def train_one_epoch(
         with torch.no_grad():
             ims_x, lbs_x = ims_x[0].cuda(), one_hot(lbs_x).cuda()
             ims_u = [im.cuda() for im in ims_u]
-            lbs_u = lb_guessor(ema, ims_u).cuda()
+            lbs_u = lb_guessor(model, ims_u).cuda()
             ims = torch.cat([ims_x]+ims_u, dim=0)
             lbs = torch.cat([lbs_x]+[lbs_u for _ in range(n_guesses)], dim=0)
             ims, lbs = mixuper(ims, lbs)
@@ -130,10 +130,9 @@ def train_one_epoch(
 
 
 def evaluate(ema):
-    model = WideResnet(n_classes, k=wresnet_k, n=wresnet_n) # wide resnet-28
-    model.load_state_dict(ema.state_dict)
-    model.eval()
-    model.cuda()
+    ema.apply_shadow()
+    ema.model.eval()
+    ema.model.cuda()
 
     dlval = get_val_loader(
         batch_size=128, num_workers=n_workers, root='cifar10'
@@ -143,13 +142,14 @@ def evaluate(ema):
         ims = ims[0].cuda()
         lbs = lbs.cuda()
         with torch.no_grad():
-            logits = model(ims)
+            logits = ema.model(ims)
             scores = torch.softmax(logits, dim=1)
             _, preds = torch.max(scores, dim=1)
             match = lbs == preds
             matches.append(match)
     matches = torch.cat(matches, dim=0).float()
     acc = torch.mean(matches)
+    ema.restore()
     return acc
 
 
@@ -191,7 +191,6 @@ def train():
     )
     best_acc = -1
     print('start to train')
-
     for e in range(n_epoches):
         model.train()
         print('epoch: {}'.format(e))

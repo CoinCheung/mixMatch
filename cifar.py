@@ -70,7 +70,6 @@ class Cifar10(Dataset):
         self.n_guesses = n_guesses
         assert len(self.data) == len(self.labels)
         assert self.n_guesses >= 1
-        #  mean, std = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
         mean, std = (0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616)
         if is_train:
             self.trans = T.Compose([

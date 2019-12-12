@@ -38,7 +38,8 @@ download cifar-10 dataset:
 
 4. do not use dropout in the wide-resnet-28-2.
 
-5. wd should be added to model(not ema) weight directly rather than added to optimizer, which is actually added to the gradients.
+5. wd should be added to model(not ema) weight directly rather than added via optimizer options, which is actually added to the gradients.
 
-6. use ema parameters to guess the labels.
+6. ~~use ema parameters to guess the labels.~~ That is what mean teacher does.
 
+7. mixup should use different mix coefficients for each samples in the batch, rather than one coefficient for the whole batch.

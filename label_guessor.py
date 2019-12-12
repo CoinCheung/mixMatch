@@ -1,21 +1,18 @@
 import torch
 
 class LabelGuessor(object):
+
     def __init__(self, model, T):
         self.T = T
         self.guessor = model
 
     @torch.no_grad()
-    def __call__(self, ema, ims):
+    def __call__(self, model, ims):
         org_state = {
             k: v.clone().detach()
-            for k, v in self.guessor.state_dict().items()
+            for k, v in model.state_dict().items()
         }
         is_train = self.guessor.training
-        self.guessor.load_state_dict({
-            k: v.clone().detach()
-            for k, v in ema.state_dict.items()
-        })
         self.guessor.train()
         all_probs = []
         for im in ims:
@@ -27,6 +24,9 @@ class LabelGuessor(object):
         lbs_tem = torch.pow(qb, 1./self.T)
         lbs = lbs_tem / torch.sum(lbs_tem, dim=1, keepdim=True)
         self.guessor.load_state_dict(org_state)
-        if not is_train: self.guessor.eval()
+        if is_train:
+            self.guessor.train()
+        else:
+            self.guessor.eval()
         return lbs.detach()
 
