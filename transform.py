@@ -50,7 +50,7 @@ class Normalize(object):
         self.std = np.array(std, np.float32).reshape(1, 1, -1)
 
     def __call__(self, im):
-        im = im.astype(np.float32)
+        im = im.astype(np.float32) / 255.
         im -= self.mean
         im /= self.std
         return im

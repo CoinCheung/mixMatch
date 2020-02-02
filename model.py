@@ -173,13 +173,11 @@ class WideResnet(nn.Module):
         self.n_layers, self.k = n, k
         self.backbone = WideResnetBackbone(k=k, n=n)
         self.classifier = nn.Linear(64 * self.k, n_classes, bias=True)
-        self.bn = nn.BatchNorm1d(n_classes, momentum=0.001)
 
     def forward(self, x):
         feat = self.backbone(x)[-1]
         feat = torch.mean(feat, dim=(2, 3))
         feat = self.classifier(feat)
-        feat = self.bn(feat)
         return feat
 
     def init_weight(self):
