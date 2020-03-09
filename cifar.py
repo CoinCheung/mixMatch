@@ -5,6 +5,7 @@ from PIL import Image
 
 import torch
 from torch.utils.data import Dataset
+from sampler import RandomSampler, BatchSampler
 import torchvision
 import transform as T
 
@@ -99,7 +100,7 @@ class Cifar10(Dataset):
 
 
 
-def get_train_loader(batch_size, L, K, num_workers, pin_memory=True, root='dataset'):
+def get_train_loader(batch_size, n_iters_per_epoch, L, K, pin_memory=True, root='dataset'):
     data_x, label_x, data_u, label_u = load_data_train(L=L, dspth=root)
 
     ds_x = Cifar10(
@@ -114,20 +115,22 @@ def get_train_loader(batch_size, L, K, num_workers, pin_memory=True, root='datas
         n_guesses=K,
         is_train=True
     )
+    sampler_x = RandomSampler(ds_x, replacement=True,
+            num_samples=n_iters_per_epoch * batch_size)
+    batch_sampler_x = BatchSampler(sampler_x, batch_size, drop_last=True)
     dl_x = torch.utils.data.DataLoader(
         ds_x,
-        shuffle=True,
-        batch_size=batch_size,
-        drop_last=True,
-        num_workers=num_workers,
+        batch_sampler=batch_sampler_x,
+        num_workers=1,
         pin_memory=pin_memory
     )
+    sampler_u = RandomSampler(ds_u, replacement=True,
+            num_samples=n_iters_per_epoch * batch_size)
+    batch_sampler_u = BatchSampler(sampler_u, batch_size, drop_last=True)
     dl_u = torch.utils.data.DataLoader(
         ds_u,
-        shuffle=True,
-        batch_size=batch_size,
-        drop_last=True,
-        num_workers=num_workers,
+        batch_sampler=batch_sampler_u,
+        num_workers=2,
         pin_memory=pin_memory
     )
     return dl_x, dl_u

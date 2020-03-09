@@ -33,10 +33,10 @@ weight_decay = 0.02
 
 ## settings
 torch.multiprocessing.set_sharing_strategy('file_system')
-torch.manual_seed(123)
-random.seed(123)
-np.random.seed(123)
-torch.backends.cudnn.deterministic = True
+#  torch.manual_seed(123)
+#  random.seed(123)
+#  np.random.seed(123)
+#  torch.backends.cudnn.deterministic = True
 
 
 def set_model():
@@ -68,16 +68,8 @@ def train_one_epoch(
     loss_avg, loss_x_avg, loss_u_avg = [], [], []
     st = time.time()
     for it in range(n_iters_per_epoch):
-        try:
-            ims_x, lbs_x = next(dl_x)
-        except StopIteration:
-            dl_x = iter(dltrain_x)
-            ims_x, lbs_x = next(dl_x)
-        try:
-            ims_u, _ = next(dl_u)
-        except StopIteration:
-            dl_u = iter(dltrain_u)
-            ims_u, _ = next(dl_u)
+        ims_x, lbs_x = next(dl_x)
+        ims_u, _ = next(dl_u)
         with torch.no_grad():
             ims_x, lbs_x = ims_x[0].cuda(), one_hot(lbs_x).cuda()
             ims_u = [im.cuda() for im in ims_u]
@@ -162,8 +154,9 @@ def do_weight_decay(model, decay):
 def train():
     model, criteria_x, criteria_u = set_model()
 
+    n_iters_per_epoch = n_imgs_per_epoch // batchsize
     dltrain_x, dltrain_u = get_train_loader(
-        batchsize, L=250, K=n_guesses, num_workers=n_workers
+        batchsize, n_iters_per_epoch, L=250, K=n_guesses
     )
     lb_guessor = LabelGuessor(model, T=temperature)
     mixuper = MixUp(mixup_alpha)
